@@ -29,8 +29,32 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
+    const database = client.db('missionscic11DB')
+    const userCollections = database.collection('user')
 
-    
+    app.post('/users', async(req,res)=>{
+        const userInfo = req.body;
+        userInfo.role = "buyer";
+        userInfo.createdAt = new Date();
+
+        const result = await userCollections.insertOne(userInfo);
+        res.send(result)
+    })
+
+    //Api for getting current user email
+    app.get('/users/role/:email', async (req, res)=> {
+        const {email} = req.params
+        console.log(email);
+        
+
+        const query = {email:email}
+        const result = await userCollections.findOne(query)
+        console.log(result);
+        
+        res.send(result)
+    })
+
+
 
 
 
