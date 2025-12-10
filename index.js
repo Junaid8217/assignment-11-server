@@ -31,27 +31,47 @@ async function run() {
 
     const database = client.db('missionscic11DB')
     const userCollections = database.collection('user')
+    const productCollections = database.collection('product')
 
-    app.post('/users', async(req,res)=>{
-        const userInfo = req.body;
-        userInfo.role = "buyer";
-        userInfo.createdAt = new Date();
+    //save user
+    app.post('/users', async (req, res) => {
+      const userInfo = req.body;
+      userInfo.createdAt = new Date();
 
-        const result = await userCollections.insertOne(userInfo);
-        res.send(result)
+      const result = await userCollections.insertOne(userInfo);
+      res.send(result)
     })
 
     //Api for getting current user email
-    app.get('/users/role/:email', async (req, res)=> {
-        const {email} = req.params
-        console.log(email);
-        
+    app.get('/users/role/:email', async (req, res) => {
+      const { email } = req.params
+      console.log(email);
 
-        const query = {email:email}
-        const result = await userCollections.findOne(query)
-        console.log(result);
-        
-        res.send(result)
+
+      const query = { email: email }
+      const result = await userCollections.findOne(query)
+      console.log(result);
+
+      res.send(result)
+    })
+
+
+    //PRODUCTS
+    app.post('/products', async (req, res) => {
+      const data = req.body;
+      data.createdAt = new Date();
+      const result = await productCollections.insertOne(data)
+
+      res.send(result)
+    })
+
+    //for getting manager email
+    app.get('/manager/products/:email', async (req, res) => {
+      const email = req.params.email
+      const query = {productManagerEmail: email}
+
+      const result = await productCollections.find(query).toArray()
+      res.send(result);
     })
 
 
@@ -73,12 +93,12 @@ run().catch(console.dir);
 
 
 
-app.get('/', (req, res)=> {
-    res.send("Hello I'm Junaid this time I'm, working with assignment 11!!!");
+app.get('/', (req, res) => {
+  res.send("Hello I'm Junaid this time I'm, working with assignment 11!!!");
 })
 
-app.listen(port, ()=>{
-    console.log(`Server is running on ${port}`);
-    
+app.listen(port, () => {
+  console.log(`Server is running on ${port}`);
+
 })
 
