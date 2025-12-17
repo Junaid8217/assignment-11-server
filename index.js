@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
 const { Long } = require('mongodb');
@@ -92,13 +92,16 @@ async function run() {
       res.send(result)
     })
 
+
+    //update user status by admin
     app.patch('/update/user/status', verifyFBToken, async (req, res) => {
-      const { email, status } = req.query
+      const { email, status, role } = req.query
       const query = { email: email }
 
       const updateStatus = {
         $set: {
-          status: status
+          status: status,
+          role: role
         }
       }
       const result = await userCollections.updateOne(query, updateStatus)
@@ -112,6 +115,24 @@ async function run() {
       data.createdAt = new Date();
       const result = await requestCollections.insertOne(data)
 
+      res.send(result)
+    })
+
+    //Donation Request Page
+     app.get('/request', async (req, res) => {
+      const result = await requestCollections.find().toArray()
+      res.status(200).send(result)
+    })
+
+    //Donation Request Details Page
+    app.get('/request-details/:id', async (req, res) => {
+      const id = req.params.id
+      console.log(id)
+
+      //query for matching id between frontend and database
+      const query = { _id: new ObjectId(id) }
+      //matching the id from the collection
+      const result = await requestCollections.findOne(query)
       res.send(result)
     })
 
