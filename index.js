@@ -119,7 +119,7 @@ async function run() {
     })
 
     //Donation Request Page
-     app.get('/request', async (req, res) => {
+    app.get('/request', async (req, res) => {
       const result = await requestCollections.find().toArray()
       res.status(200).send(result)
     })
@@ -135,6 +135,24 @@ async function run() {
       const result = await requestCollections.findOne(query)
       res.send(result)
     })
+
+
+    //update donation status by 
+    app.patch('/update/donation/status', verifyFBToken, async (req, res) => {
+      const { id, donationStatus } = req.query
+      const query = { _id: new ObjectId(id) }
+
+      const updateStatus = {
+        $set: {
+          donationStatus: donationStatus
+          
+        }
+      }
+      const result = await requestCollections.updateOne(query, updateStatus)
+      res.send(result)
+    })
+
+
 
     // //for getting manager email
     // app.get('/manager/products/:email', async (req, res) => {
@@ -205,28 +223,28 @@ async function run() {
 
 
     //search
-    app.get('/search-request', async(req, res)=>{
-      const {blood, district, upazila} = req.query;
+    app.get('/search-request', async (req, res) => {
+      const { blood, district, upazila } = req.query;
 
       const query = {};
-      if(!query){
-        return 
+      if (!query) {
+        return
       }
-      if(blood){
-        const fixed = blood.replace(/ /g,"+").trim();
+      if (blood) {
+        const fixed = blood.replace(/ /g, "+").trim();
         query.blood = fixed
       }
-      if(district){
+      if (district) {
         query.district = district;
       }
-      if(upazila){
+      if (upazila) {
         query.upazila = upazila;
       }
 
       const result = await requestCollections.find(query).toArray();
       res.send(result)
-      
-      
+
+
 
     })
 
@@ -274,20 +292,20 @@ async function run() {
 
       const transactionId = session.payment_intent;
 
-      if(session.payment_status=='paid'){
+      if (session.payment_status == 'paid') {
         const paymentInfo = {
-          amount: session.amount_total/100,
-          currency:session.currency,
+          amount: session.amount_total / 100,
+          currency: session.currency,
           donorEmail: session.customer_email,
           transactionId,
           paymentStatus: session.payment_status,
           paidAt: new Date()
         }
 
-        const result= await paymentCollections.insertOne(paymentInfo)
+        const result = await paymentCollections.insertOne(paymentInfo)
         return res.send(paymentInfo)
       }
-      
+
 
     })
 
