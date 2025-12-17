@@ -62,6 +62,7 @@ async function run() {
     const database = client.db('missionscic11DB')
     const userCollections = database.collection('user')
     const requestCollections = database.collection('request')
+    const paymentCollections = database.collection('payment')
 
     //save user
     app.post('/users', async (req, res) => {
@@ -182,13 +183,41 @@ async function run() {
     })
 
 
+    //search
+    app.get('/search-request', async(req, res)=>{
+      const {blood, district, upazila} = req.query;
+
+      const query = {};
+      if(!query){
+        return 
+      }
+      if(blood){
+        const fixed = blood.replace(/ /g,"+").trim();
+        query.blood = fixed
+      }
+      if(district){
+        query.district = district;
+      }
+      if(upazila){
+        query.upazila = upazila;
+      }
+
+      const result = await requestCollections.find(query).toArray();
+      res.send(result)
+      
+      
+
+    })
+
+
+
     //payments
     app.post('/create-payment-checkout', async (req, res) => {
       const information = req.body
       const amount = parseInt(information.donateAmount) * 100;
 
       const session = await stripe.checkout.sessions.create({
-       
+
         line_items: [
           {
             price_data: {
@@ -205,29 +234,55 @@ async function run() {
         mode: 'payment',
         metadata: {
           donorName: information?.donorName
-        }, 
+        },
         customer_email: information?.donorEmail,
-         success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-         cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`,
+        success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`,
       });
 
-      res.send({url: session.url})
+      res.send({ url: session.url })
 
-    }) 
-    
+    })
+    //for payment info stripe
+    app.post('/success-payment', async (req, res) => {
+      const { session_id } = req.query
+      const session = await stripe.checkout.sessions.retrieve(
+        session_id
+      );
+      console.log(session);
+
+      const transactionId = session.payment_intent;
+
+      if(session.payment_status=='paid'){
+        const paymentInfo = {
+          amount: session.amount_total/100,
+          currency:session.currency,
+          donorEmail: session.customer_email,
+          transactionId,
+          paymentStatus: session.payment_status,
+          paidAt: new Date()
+        }
+
+        const result= await paymentCollections.insertOne(paymentInfo)
+        return res.send(paymentInfo)
+      }
+      
+
+    })
 
 
 
 
 
-      // Send a ping to confirm a successful connection
-      await client.db("admin").command({ ping: 1 });
-      console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    } finally {
-      // Ensures that the client will close when you finish/error
-      // await client.close();
-    }
+
+    // Send a ping to confirm a successful connection
+    await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } finally {
+    // Ensures that the client will close when you finish/error
+    // await client.close();
   }
+}
 run().catch(console.dir);
 
 
@@ -235,12 +290,12 @@ run().catch(console.dir);
 
 
 
-  app.get('/', (req, res) => {
-    res.send("Hello I'm Junaid this time I'm, working with assignment 11!!!");
-  })
+app.get('/', (req, res) => {
+  res.send("Hello I'm Junaid this time I'm, working with assignment 11!!!");
+})
 
-  app.listen(port, () => {
-    console.log(`Server is running on ${port}`);
+app.listen(port, () => {
+  console.log(`Server is running on ${port}`);
 
-  })
+})
 
