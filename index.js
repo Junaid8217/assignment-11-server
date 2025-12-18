@@ -41,6 +41,15 @@ const verifyFBToken = async (req, res, next) => {
   }
 }
 
+const verifyAdmin = async (req, res, next) => {
+  const email = req.decoded_email;
+  const user = await userCollections.findOne({ email });
+  if (user?.role !== "Admin") {
+    return res.status(403).send({ message: "Forbidden" });
+  }
+  next();
+};
+
 
 
 const uri = "mongodb+srv://missionscic11:zq89v1KE8H6a7KT7@cluster0.gv2lthx.mongodb.net/?appName=Cluster0";
@@ -111,12 +120,62 @@ async function run() {
 
     //ADD REQUEST
     app.post('/request', verifyFBToken, async (req, res) => {
+
+
+        const email = req.decoded_email;
+  const user = await userCollections.findOne({ email });
+
+  if (user.status !== "active") {
+    return res.status(403).send({ message: "Account is not active" });
+  }
       const data = req.body;
       data.createdAt = new Date();
       const result = await requestCollections.insertOne(data)
 
       res.send(result)
     })
+
+
+      // GET all donation requests (admin only)
+app.get('/all-donation-requests', verifyFBToken, async (req, res) => {
+  const result = await requestCollections.find().sort({ createdAt: -1 }).toArray();
+  res.send(result);
+});
+
+app.get("/admin/donation-request/:id", verifyFBToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+
+  const result = await requestCollections.findOne({ _id: new ObjectId(id) });
+
+  if (!result) {
+    return res.status(404).send({ message: "Donation request not found" });
+  }
+
+  res.send(result);
+});
+
+// Admin delete donation request
+app.delete('/admin/donation-request/:id', verifyFBToken, async (req, res) => {
+  const email = req.decoded_email;
+  const user = await userCollections.findOne({ email });
+
+  if (!user || user.role !== "Admin") {
+    return res.status(403).send({ message: "Forbidden" });
+  }
+
+  try {
+    const result = await requestCollections.deleteOne({ _id: new ObjectId(req.params.id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ message: "Request not found" });
+    }
+
+    res.send({ message: "Donation request deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Failed to delete request" });
+  }
+});
 
     //Donation Request Page
     app.get('/request', async (req, res) => {
@@ -152,18 +211,11 @@ async function run() {
       res.send(result)
     })
 
-
-
-    // //for getting manager email
-    // app.get('/manager/products/:email', async (req, res) => {
-    //   const email = req.params.email
-    //   const query = { productManagerEmail: email }
-
-    //   const result = await productCollections.find(query).toArray()
-    //   res.send(result);
-    // })
-
-
+    //all fund page
+    app.get('/fund', async (req, res) => {
+      const result = await paymentCollections.find().toArray()
+      res.status(200).send(result)
+    })
 
 
     //for getting user info (Profile Section)
@@ -193,9 +245,6 @@ async function run() {
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
-
-
-
 
 
 
@@ -323,13 +372,6 @@ app.put('/donation-request/:id', verifyFBToken, async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-
     //search
     app.get('/search-request', async (req, res) => {
       const { blood, district, upazila } = req.query;
@@ -416,10 +458,6 @@ app.put('/donation-request/:id', verifyFBToken, async (req, res) => {
 
 
     })
-
-
-
-
 
 
     // Send a ping to confirm a successful connection
