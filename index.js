@@ -222,6 +222,114 @@ async function run() {
     })
 
 
+    //for getting recent request in profile
+        //for getting one's request
+    app.get('/my-request-profile', verifyFBToken, async (req, res) => {
+      const email = req.decoded_email
+
+
+
+      const query = { requesterEmail: email }
+
+      const result = await requestCollections
+        .find(query)
+        .toArray()
+
+      const totalRequest = await requestCollections.countDocuments(query)
+
+      //size=10; for second page = 1*10; third page=2*10= 20
+
+      res.send({ request: result, totalRequest })
+    })
+
+
+    //for delete
+    app.delete('/donation-request/:id', verifyFBToken, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const email = req.decoded_email;
+
+    const query = {
+      _id: new ObjectId(id),
+      requesterEmail: email // 🔒 ensure user deletes ONLY his own request
+    };
+
+    const result = await requestCollections.deleteOne(query);
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ message: "Request not found or unauthorized" });
+    }
+
+    res.send({ message: "Donation request deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Failed to delete request" });
+  }
+});
+
+//for view
+app.get("/donation-request/:id", verifyFBToken, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const email = req.decoded_email;
+
+    const query = {
+      _id: new ObjectId(id),
+      requesterEmail: email // 🔐 security check
+    };
+
+    const result = await requestCollections.findOne(query);
+
+    if (!result) {
+      return res.status(404).send({ message: "Donation request not found" });
+    }
+
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Failed to load donation request" });
+  }
+});
+
+
+// PUT /donation-request/:id
+app.put('/donation-request/:id', verifyFBToken, async (req, res) => {
+  const { id } = req.params;
+  const email = req.decoded_email;
+  const updateData = { ...req.body };
+
+  // Remove immutable fields
+  delete updateData._id;
+  delete updateData.requesterEmail; // prevent changing the owner
+
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).send({ message: "Invalid request ID" });
+  }
+
+  try {
+    const result = await requestCollections.updateOne(
+      { _id: new ObjectId(id), requesterEmail: email }, // secure: only owner can update
+      { $set: updateData }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({ message: "Request not found or unauthorized" });
+    }
+
+    res.send({ message: "Donation request updated successfully" });
+  } catch (err) {
+    console.error("Update request error:", err);
+    res.status(500).send({ message: "Server error" });
+  }
+});
+
+
+
+
+
+
+
+
     //search
     app.get('/search-request', async (req, res) => {
       const { blood, district, upazila } = req.query;
